@@ -73,8 +73,11 @@ test('tp() translates where PANEL has the language and keeps English everywhere 
       repeat: I.tp('Track'),
       power: main.tpv('{n}% power', { n: 40 }),
       quota: main.quotaText('5-hour session · Opus'),
+      // an agent label that happens to name an Object member is text, not the inherited member
+      inherited: [I.tp('constructor'), I.tc('toString'), main.quotaText('constructor')],
     };
   });
+  expect(out.inherited).toEqual(['constructor', 'toString', 'constructor']);
   expect(out.de).toBe('Waiting for GitHub data…');
   expect(out.pt).toBe('Sem detecção');
   expect(out.repeat).toBe('Faixa');

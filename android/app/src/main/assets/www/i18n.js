@@ -10549,18 +10549,18 @@
   function tc(text) {
     if (!text) return text;
     const dict = CATALOG[active];
-    if (!dict) return text;
-    const hit = dict[text];
-    return hit === undefined ? text : hit;
+    // own entries only: text such as "constructor" must not pick up Object's inherited members
+    if (!dict || !Object.prototype.hasOwnProperty.call(dict, text)) return text;
+    return dict[text];
   }
 
   /** Translate a panel literal by its English text (see PANEL); anything missing stays English. */
   function tp(text) {
     if (!text) return text;
     const dict = PANEL[active];
-    if (!dict) return text;
-    const hit = dict[text];
-    return hit === undefined ? text : hit;
+    // own entries only: text such as "constructor" must not pick up Object's inherited members
+    if (!dict || !Object.prototype.hasOwnProperty.call(dict, text)) return text;
+    return dict[text];
   }
 
   function applyDom(root = document) {
