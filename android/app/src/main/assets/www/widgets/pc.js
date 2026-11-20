@@ -1,4 +1,4 @@
-import { $, API, D, PANEL_HEADERS, LOCALE, Q_STYLE, api, bridge, cfg, color, cssVar, rulesPaused, toggleRulesPause, fillIcon, fmtDur, fmtHM, fmtMem, gotoPageRef, gpuMem, gpusOf, h, en, haptic, icon, openSheet, paceInfo, pad, pairedPcs, quotaProviders, r1, shortDur, shortGpu, store, switchPc, t, tick, toast, transport, emo, labelled, rich } from '../main.js';
+import { $, API, D, PANEL_HEADERS, LOCALE, Q_STYLE, api, bridge, cfg, color, cssVar, rulesPaused, toggleRulesPause, fillIcon, fmtDur, fmtHM, fmtMem, gotoPageRef, gpuMem, gpusOf, h, en, haptic, icon, openSheet, paceInfo, pad, pairedPcs, quotaProviders, r1, shortDur, shortGpu, store, switchPc, t, tick, toast, transport, emo, labelled, rich, tp, tpv, quotaText } from '../main.js';
 import { W } from '../registry.js';
 import { canKillAnywhere, dialEl, every } from './helpers.js';
 
@@ -58,7 +58,7 @@ W.batteries = {
       if (key === lastKey) return;
       lastKey = key;
       if (!data && !devices.length) { list.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
-      if (!devices.length) { list.replaceChildren(h('div', 'empty', 'No wireless devices report a battery level')); return; }
+      if (!devices.length) { list.replaceChildren(h('div', 'empty', tp('No wireless devices report a battery level'))); return; }
       list.replaceChildren(...devices.map((d) => {
         const col = d.level <= low ? '#ef4444' : d.level <= low * 2 ? '#f59e0b' : '#22c55e';
         const row = h('div', 'bt-row' + (d.level <= low ? ' low' : ''),
@@ -88,7 +88,7 @@ W.obs = {
       busy = action + (scene || ''); render(true);
       try {
         const r = await fetch(`${API}/obs/${action}` + (scene ? '?scene=' + encodeURIComponent(scene) : ''), { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
-        if (!r.ok) toast((await r.json().catch(() => ({}))).error || 'OBS did not do it', 'err');
+        if (!r.ok) toast((await r.json().catch(() => ({}))).error || tp('OBS did not do it'), 'err');
       } catch (_) { toast(t('panel.pcNoAnswer'), 'err'); }
       setTimeout(async () => { await load(); busy = null; render(true); }, 600);
     };
@@ -99,7 +99,7 @@ W.obs = {
       if (!force && key === lastKey) return;
       lastKey = key;
       if (!data) { box.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
-      if (!data.enabled) { box.replaceChildren(h('div', 'w-title', en('OBS')), h('div', 'empty', 'Turn on OBS in Settings › General')); return; }
+      if (!data.enabled) { box.replaceChildren(h('div', 'w-title', en('OBS')), h('div', 'empty', tp('Turn on OBS in Settings › General'))); return; }
       if (!s.connected) { box.replaceChildren(h('div', 'w-title', en('OBS')), h('div', 'empty', s.error || t('panel.connecting'))); return; }
       const ctl = data.control;
       const pill = (on, label, cls, time, action) => {
@@ -107,10 +107,10 @@ W.obs = {
         if (ctl) el.addEventListener('click', () => act(action));
         return el;
       };
-      const recLabel = s.recordPaused ? 'PAUSED' : 'REC';
+      const recLabel = s.recordPaused ? tp('PAUSED') : 'REC';
       const kids = [
         h('div', 'obs-top', pill(s.streaming, 'LIVE', 'live', s.streamMs, 'stream'), pill(s.recording, recLabel, 'rec', s.recordPaused ? s.recordMs - since : s.recordMs, 'record')),
-        h('div', 'obs-scene', h('span', null, 'Scene'), h('b', null, s.scene || '—'),
+        h('div', 'obs-scene', h('span', null, tp('Scene')), h('b', null, s.scene || '—'),
           s.micMuted != null ? h('span', 'obs-mic' + (s.micMuted ? ' muted' : ''), emo(s.micMuted ? '🔇' : '🎙️')) : null),
       ];
       if (o.scenes !== false && s.scenes.length) {
@@ -505,10 +505,10 @@ export function haState(e) {
   if (s === 'unavailable' || s === 'unknown') return s === 'unknown' ? '—' : t('w.unavailable');
   if (dom === 'binary_sensor') {
     const on = s === 'on';
-    if (['door', 'window', 'garage_door', 'opening'].includes(dc)) return on ? 'Open' : 'Closed';
-    if (['motion', 'occupancy', 'presence'].includes(dc)) return on ? 'Detected' : 'Clear';
-    if (dc === 'moisture') return on ? 'Wet' : 'Dry';
-    return on ? 'On' : 'Off';
+    if (['door', 'window', 'garage_door', 'opening'].includes(dc)) return on ? tp('Open') : tp('Closed');
+    if (['motion', 'occupancy', 'presence'].includes(dc)) return on ? tp('Detected') : tp('No detection');
+    if (dc === 'moisture') return on ? tp('Wet') : tp('Dry');
+    return on ? tp('On') : tp('Off');
   }
   if (dom === 'scene' || dom === 'script' || dom === 'button' || dom === 'input_button') return 'Run';
   if (/^-?\d+(\.\d+)?$/.test(s)) { const n = +s; return (Math.abs(n) >= 100 ? Math.round(n) : Math.round(n * 10) / 10) + (e.unit ? ' ' + e.unit : ''); }
@@ -556,7 +556,7 @@ W.ha = {
       busy = e.id; render(true);
       try {
         const r = await fetch(`${API}/ha/toggle/${encodeURIComponent(e.id)}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
-        if (!r.ok) toast((await r.json().catch(() => ({}))).error || 'Could not switch it', 'err');
+        if (!r.ok) toast((await r.json().catch(() => ({}))).error || tp('Could not switch it'), 'err');
       } catch (_) { toast(t('panel.pcNoAnswer'), 'err'); }
       setTimeout(async () => { await load(); busy = null; render(true); }, 700);
     };
@@ -617,7 +617,7 @@ W.docker = {
       const running = items.filter((c) => c.state === 'running').length;
       head.querySelector('.dk-count').textContent = snap?.available && (!snap.error || matched.length) ? ` ${running}/${matched.length}` : '';
       if (!data || (!snap?.updated && !snap?.error)) { list.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
-      if (!snap.available || (snap.error && !items.length)) { list.replaceChildren(h('div', 'empty', snap.error || 'Docker is not running')); return; }
+      if (!snap.available || (snap.error && !items.length)) { list.replaceChildren(h('div', 'empty', snap.error || tp('Docker is not running'))); return; }
       if (!items.length) {
         const msg = matched.length
           ? `No running containers (${matched.length} stopped)`
@@ -632,7 +632,7 @@ W.docker = {
           h('span', 'dk-name', c.name, h('small', null, ' ' + (c.project ? c.project + ' · ' : '') + c.image.split('@')[0])),
           h('span', 'dk-stat', busy === c.id ? '…' : c.state === 'running' ? (c.cpu != null ? `${c.cpu.toFixed(1)}%` + (c.mem ? ` · ${c.mem}` : '') : c.status) : c.status.replace(/ ago$/, '')));
         row.addEventListener('click', () => {
-          if (!data.control) { toast('Turn on "Allow start / stop" in the widget settings on the PC'); return; }
+          if (!data.control) { toast(tp('Turn on "Allow start / stop" in the widget settings on the PC')); return; }
           haptic(); open = open === c.id ? null : c.id; render(true);
         });
         if (open !== c.id) return row;
@@ -661,7 +661,7 @@ W.apps = {
     const head = h('div', 'w-title', o.title || en('Apps'), h('span', 'ap-count'));
     const search = h('input', 'ap-search');
     search.type = 'search';
-    search.placeholder = 'Search apps';
+    search.placeholder = tp('Search apps');
     search.autocomplete = 'off';
     search.spellcheck = false;
     search.addEventListener('input', () => { q = search.value.trim().toLowerCase(); render(true); });
@@ -670,14 +670,14 @@ W.apps = {
 
     const load = async () => { try { data = await api('/apps', 'GET', 10_000); } catch (_) { return false; } };
     const open = async (a) => {
-      if (!data?.canOpen) { toast('Opening apps needs an All apps widget saved on a page'); return; }
+      if (!data?.canOpen) { toast(tp('Opening apps needs an All apps widget saved on a page')); return; }
       haptic();
       busy = a.id; render(true);
       try {
         const r = await fetch(`${API}/apps/open?id=${encodeURIComponent(a.id)}`, { method: 'POST', cache: 'no-store', headers: PANEL_HEADERS });
         const j = await r.json().catch(() => ({}));
         if (r.ok) toast(`Opening ${a.name}`, 'ok'); else toast(j.error || `Could not open ${a.name}`, 'err');
-      } catch (_) { toast('The PC did not answer', 'err'); }
+      } catch (_) { toast(tp('The PC did not answer'), 'err'); }
       busy = null; render(true);
     };
     const rank = (a) => { const i = pinned.indexOf(a.name.toLowerCase()); return i < 0 ? pinned.length : i; };
@@ -722,8 +722,8 @@ W.apps = {
       if (!force && key === lastKey) return;
       lastKey = key;
       head.querySelector('.ap-count').textContent = all.length ? ` ${q ? items.length + '/' : ''}${all.length}` : '';
-      if (!data) { grid.replaceChildren(h('div', 'empty', 'Loading…')); return; }
-      if (!data.supported) { grid.replaceChildren(h('div', 'empty', 'The apps list is available on macOS for now')); return; }
+      if (!data) { grid.replaceChildren(h('div', 'empty', tp('Loading…'))); return; }
+      if (!data.supported) { grid.replaceChildren(h('div', 'empty', tp('The apps list is available on macOS for now'))); return; }
       if (!items.length) { grid.replaceChildren(h('div', 'empty', q ? `No apps match "${search.value.trim()}"` : 'No apps found')); return; }
       grid.replaceChildren(...items.map(tile));
     };
@@ -766,13 +766,13 @@ W.agenda = {
       lastKey = key;
       box.classList.toggle('small', small);
       if (!cal) { box.replaceChildren(h('div', 'empty', t('w.loading'))); return; }
-      if (!cal.updated && !list.length) { box.replaceChildren(h('div', 'w-title', o.title || en('Agenda')), h('div', 'empty', 'Add a calendar in Settings › General')); return; }
+      if (!cal.updated && !list.length) { box.replaceChildren(h('div', 'w-title', o.title || en('Agenda')), h('div', 'empty', tp('Add a calendar in Settings › General'))); return; }
       const timed = list.filter((e) => !e.allDay);
       const cur = timed.find((e) => e.start <= now);
       const next = timed.find((e) => e.start > now);
       if (small) {
         const e = cur || next || list[0];
-        if (!e) { box.replaceChildren(h('div', 'ag-big-t', 'No events'), h('div', 'ag-big-s', `next ${days} days`)); return; }
+        if (!e) { box.replaceChildren(h('div', 'ag-big-t', tp('No events')), h('div', 'ag-big-s', tpv('next {n} days', { n: days }))); return; }
         box.style.setProperty('--c', e.color);
         box.replaceChildren(
           h('div', 'ag-big-s', e === cur ? `Now · until ${hm(e.end)}` : e.allDay ? dayName(e.start) + ' · all day' : `${dayName(e.start) === t('time.today') ? inMin(e.start) || t('time.today') : dayName(e.start)} · ${hm(e.start)}`),
@@ -813,7 +813,7 @@ W.onair = {
   needs: ['state', 'push'],
   create(box, { o }) {
     box.classList.add('w-onair');
-    const sign = h('div', 'oa-sign', o.text || o.title || 'ON AIR'), sub = h('div', 'oa-sub');
+    const sign = h('div', 'oa-sign', o.text || o.title || tp('ON AIR')), sub = h('div', 'oa-sub');
     box.append(sign, sub);
     const src = o.source || 'both';
     return {
@@ -831,8 +831,8 @@ W.onair = {
         box.classList.toggle('on', on);
         const apps = [...new Set([...(mic ? p.micApps || [] : []), ...(cam ? p.cameraApps || [] : [])])];
         sub.replaceChildren(rich(on
-          ? [mic ? '🎙️' : '', cam ? '📷' : '', obsLive ? (obs.streaming ? 'OBS live' : 'OBS recording') : '', apps.join(', ') || (pushed && typeof pv === 'string' ? pv : '')].filter(Boolean).join(' ')
-          : (src === 'mic' || src === 'camera') && p && p.mic == null ? 'Not detectable on this computer' : 'Off air'));
+          ? [mic ? '🎙️' : '', cam ? '📷' : '', obsLive ? (obs.streaming ? tp('OBS live') : tp('OBS recording')) : '', apps.join(', ') || (pushed && typeof pv === 'string' ? pv : '')].filter(Boolean).join(' ')
+          : (src === 'mic' || src === 'camera') && p && p.mic == null ? tp('Not detectable on this computer') : tp('Off air')));
       },
     };
   },
@@ -843,14 +843,14 @@ W.battery = {
   needs: ['tick'],
   create(box) {
     const dial = dialEl(), sub = h('div', 'g-sub');
-    box.append(dial, h('div', 'g-label', 'PHONE'), sub);
+    box.append(dial, h('div', 'g-label', tp('PHONE')), sub);
     const load = every(20_000, () => {
-      if (!bridge) { dial.set(0, '—'); sub.textContent = 'Only on the phone'; return; }
+      if (!bridge) { dial.set(0, '—'); sub.textContent = tp('Only on the phone'); return; }
       try {
         const b = JSON.parse(bridge.battery());
         box.style.setProperty('--q', b.plugged ? '#22c55e' : b.level <= 20 ? '#ef4444' : b.level <= 40 ? '#f59e0b' : '#84cc16');
         dial.set(b.level, b.level, '%');
-        sub.replaceChildren(rich((b.plugged ? '⚡ Charging' : 'On battery') + (b.temp ? ` · ${b.temp.toFixed(0)}°C` : '')));
+        sub.replaceChildren(rich((b.plugged ? '⚡ ' + tp('Charging') : tp('On battery')) + (b.temp ? ` · ${b.temp.toFixed(0)}°C` : '')));
       } catch (_) {}
     });
     return { update: load };
@@ -870,9 +870,9 @@ W.pcswitch = {
       const key = JSON.stringify([pcs, usb, !!bridge]);
       if (key === shown) return;
       shown = key;
-      if (!bridge) { row.replaceChildren(h('div', 'empty', 'Only on the phone')); sub.textContent = ''; return; }
+      if (!bridge) { row.replaceChildren(h('div', 'empty', tp('Only on the phone'))); sub.textContent = ''; return; }
       if (pcs.length < 2) {
-        row.replaceChildren(h('div', 'empty', pcs.length ? 'Pair another computer over Wi-Fi to switch here' : 'No computer paired over Wi-Fi'));
+        row.replaceChildren(h('div', 'empty', pcs.length ? tp('Pair another computer over Wi-Fi to switch here') : tp('No computer paired over Wi-Fi')));
         sub.textContent = '';
         return;
       }
@@ -903,9 +903,9 @@ W.topprocs = {
         const pc = D.state?.pc;
         if (byMem && pc?.ramTotalGb) {
           const pct = Math.round((pc.ramUsedGb / pc.ramTotalGb) * 100);
-          title.replaceChildren(en(`Top memory (${pct}% · ${Math.round(pc.ramUsedGb)}/${Math.round(pc.ramTotalGb)} GB)`));
+          title.replaceChildren(en('Top memory'), ` (${pct}% · ${Math.round(pc.ramUsedGb)}/${Math.round(pc.ramTotalGb)} GB)`);
         } else if (!byMem && pc?.cpu != null) {
-          title.replaceChildren(en(`Top CPU (${Math.round(pc.cpu)}%)`));
+          title.replaceChildren(en('Top CPU'), ` (${Math.round(pc.cpu)}%)`);
         }
         const data = D.procs;
         if (!data?.groups?.length) { rowMap.clear(); list.replaceChildren(h('div', 'empty', t('w.measuring'))); return; }
@@ -945,11 +945,11 @@ W.quotaring = {
     const render = () => {
       const p = quotaProviders().find((x) => x.id === prov);
       const l = p?.limits?.[idx];
-      if (!l) { dial.set(0, '—'); label.textContent = `${st.logo} ${p?.name || prov}`; sub.textContent = D.quotas ? 'No data' : 'Waiting…'; return; }
+      if (!l) { dial.set(0, '—'); label.textContent = `${st.logo} ${p?.name || prov}`; sub.textContent = D.quotas ? tp('No data') : tp('Waiting…'); return; }
       const pace = paceInfo(l);
       dial.style.setProperty('--qc', l.percent >= 95 ? '#ef4444' : l.percent >= 80 ? '#f59e0b' : 'var(--q)');
       dial.set(l.percent, Math.round(l.percent), '%', pace?.elapsed);
-      label.textContent = `${st.logo} ${p.name} · ${l.label}`;
+      label.textContent = `${st.logo} ${p.name} · ${quotaText(l.label)}`;
       sub.textContent = l.resetsAt ? 'resets in ' + fmtDur(l.resetsAt - Date.now()) : '';
       sub.className = 'g-sub ' + (pace?.cls === 'over' ? 'hot' : '');
     };
@@ -1021,10 +1021,10 @@ W.rules = {
         const k = JSON.stringify([rules, active, paused]);
         if (k === key) return;
         key = k;
-        btn.replaceChildren(icon(paused ? 'play' : 'pause', 'm'), paused ? 'Resume' : 'Pause');
+        btn.replaceChildren(icon(paused ? 'play' : 'pause', 'm'), paused ? tp('Resume') : tp('Pause'));
         btn.hidden = !D.state;
         box.classList.toggle('paused', !!paused);
-        if (!rules.length) { list.replaceChildren(h('div', 'empty', 'Add rules in Settings › Rules')); return; }
+        if (!rules.length) { list.replaceChildren(h('div', 'empty', tp('Add rules in Settings › Rules'))); return; }
         const sorted = [...rules].sort((a, b) => active.includes(b.id) - active.includes(a.id));
         list.replaceChildren(...(paused ? [h('div', 'ru-note', `Paused until ${fmtHM(new Date(rulesPaused))}`)] : []),
           ...sorted.map((r) => h('div', 'ru-row' + (active.includes(r.id) && !paused ? ' on' : ''),
@@ -1050,7 +1050,7 @@ W.chargecare = {
       band.style.strokeDasharray = `${(C * (max - min)) / 100} ${C}`;
       band.style.strokeDashoffset = String((-C * min) / 100);
       band.style.opacity = ch.enabled ? '' : '0';
-      if (!bridge?.battery) { q('.cc-pct').textContent = '—'; q('.cc-text').textContent = 'Only on the phone'; return; }
+      if (!bridge?.battery) { q('.cc-pct').textContent = '—'; q('.cc-text').textContent = tp('Only on the phone'); return; }
       let b;
       try { b = JSON.parse(bridge.battery()); } catch (_) { return; }
       if (!(b.level >= 0)) return;
@@ -1130,7 +1130,7 @@ W.gpu = {
         if (!g) {
           label.textContent = 'GPU';
           name.textContent = '';
-          big.replaceChildren(h('div', 'empty', !D.state ? 'Waiting…' : idx ? 'No second GPU' : 'No GPU data'));
+          big.replaceChildren(h('div', 'empty', !D.state ? tp('Waiting…') : idx ? tp('No second GPU') : tp('No GPU data')));
           rows.replaceChildren();
           chips.replaceChildren();
           return;
@@ -1139,22 +1139,22 @@ W.gpu = {
         name.textContent = shortGpu(g.name);
         name.title = g.name;
 
-        const temps = [g.temp != null ? `${Math.round(g.temp)}°C` : null, g.hotSpot != null ? `hot spot ${Math.round(g.hotSpot)}°` : null,
-          g.memTemp != null ? `memory ${Math.round(g.memTemp)}°` : null].filter(Boolean).join(' · ');
-        big.replaceChildren(h('b', null, g.util != null ? String(Math.round(g.util)) : '—'), h('small', null, '% load'), h('span', 'gd-temp', temps));
+        const temps = [g.temp != null ? `${Math.round(g.temp)}°C` : null, g.hotSpot != null ? tpv('hot spot {n}°', { n: Math.round(g.hotSpot) }) : null,
+          g.memTemp != null ? tpv('memory {n}°', { n: Math.round(g.memTemp) }) : null].filter(Boolean).join(' · ');
+        big.replaceChildren(h('b', null, g.util != null ? String(Math.round(g.util)) : '—'), h('small', null, tp('% load')), h('span', 'gd-temp', temps));
 
         const list = [];
         const mem = gpuMem(g);
-        if (mem) list.push(meter(mem.label === 'VRAM' ? 'VRAM' : 'GPU memory', `${r1(mem.used)} / ${Math.round(mem.total)} GB`, (mem.used / mem.total) * 100));
-        if (!g.integrated && g.sharedTotal && g.sharedUsed != null) list.push(meter('Shared memory', `${r1(g.sharedUsed)} GB`, (g.sharedUsed / g.sharedTotal) * 100, '#64748b'));
+        if (mem) list.push(meter(mem.label === 'VRAM' ? 'VRAM' : tp('GPU memory'), `${r1(mem.used)} / ${Math.round(mem.total)} GB`, (mem.used / mem.total) * 100));
+        if (!g.integrated && g.sharedTotal && g.sharedUsed != null) list.push(meter(tp('Shared memory'), `${r1(g.sharedUsed)} GB`, (g.sharedUsed / g.sharedTotal) * 100, '#64748b'));
         if (g.power != null) {
-          list.push(meter('Power', g.powerLimit ? `${Math.round(g.power)} / ${Math.round(g.powerLimit)} W` : `${Math.round(g.power)} W`,
+          list.push(meter(tp('Power'), g.powerLimit ? `${Math.round(g.power)} / ${Math.round(g.powerLimit)} W` : `${Math.round(g.power)} W`,
             g.powerLimit ? (g.power / g.powerLimit) * 100 : g.powerPct, '#facc15'));
-        } else if (g.powerPct != null) list.push(meter('Power', `${Math.round(g.powerPct)}% of limit`, g.powerPct, '#facc15'));
+        } else if (g.powerPct != null) list.push(meter(tp('Power'), tpv('{n}% of limit', { n: Math.round(g.powerPct) }), g.powerPct, '#facc15'));
         const hottest = Math.max(g.temp ?? -1, g.hotSpot ?? -1);
         if (hottest >= 0) {
           const max = g.tempMax || (g.hotSpot != null ? 110 : 100);
-          list.push(meter('Temperature', `${Math.round(hottest)} / ${Math.round(max)}°C`, (hottest / max) * 100, heat(hottest, max)));
+          list.push(meter(tp('Temperature'), `${Math.round(hottest)} / ${Math.round(max)}°C`, (hottest / max) * 100, heat(hottest, max)));
         }
         rows.replaceChildren(...list);
 

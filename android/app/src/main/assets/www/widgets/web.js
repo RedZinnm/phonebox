@@ -1,4 +1,4 @@
-import { $, API, PANEL_HEADERS, ago, api, h, haptic, icon, safeFetch, store, t, tick, toast } from '../main.js';
+import { $, API, PANEL_HEADERS, ago, api, h, haptic, icon, safeFetch, store, t, tick, toast, tp } from '../main.js';
 import { W } from '../registry.js';
 import { cached, every, fmtNum, lines, pctSpan, sparkLine } from './helpers.js';
 
@@ -52,7 +52,7 @@ W.feeds = {
     if (lineCount > 1) { list.classList.add('wrap'); list.style.setProperty('--fl', lineCount); }
     const sub = h('span', 'w-sub', '');
     box.style.setProperty('--c', '#f59e0b');
-    if (o.title !== '') box.append(h('div', 'w-title', o.title || 'News', sub));
+    if (o.title !== '') box.append(h('div', 'w-title', o.title || tp('News'), sub));
     box.append(list);
     let data = null, lastKey = '', busy = null;
     const open = async (it) => {
@@ -123,7 +123,7 @@ W.exchange = {
           list.replaceChildren(h('div', 'empty', t('w.ratesUnavailable')));
           return false;
         }
-        box.querySelector('.w-sub').textContent = 'ECB · ' + days[days.length - 1];
+        box.querySelector('.w-sub').textContent = tp('ECB · ') + days[days.length - 1];
         list.replaceChildren(...syms.map((s) => {
           const series = days.map((k) => d.rates[k]?.[s]).filter((v) => Number.isFinite(v) && v > 0);
           const last = series[series.length - 1], prev = series[series.length - 2];
@@ -145,7 +145,7 @@ W.crypto = {
     const coins = lines(o.coins, ['bitcoin', 'ethereum', 'solana']).map((s) => s.toLowerCase()).slice(0, 8);
     const cur = (o.currency || 'usd').toLowerCase();
     const list = h('div', 'fx-list', h('div', 'empty', t('w.loading')));
-    box.append(h('div', 'w-title', 'Crypto', h('span', 'w-sub', cur.toUpperCase() + ' · 24 h · 7 d')), list);
+    box.append(h('div', 'w-title', tp('Crypto'), h('span', 'w-sub', cur.toUpperCase() + ' · 24 h · 7 d')), list);
     const load = every(5 * 60_000, async () => {
       try {
         const d = await cached(`cg:${cur}:${coins}`, `https://api.coingecko.com/api/v3/coins/markets?vs_currency=${cur}&ids=${coins.join(',')}&sparkline=true&price_change_percentage=24h`, 5 * 60_000);

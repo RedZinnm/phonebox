@@ -28,6 +28,24 @@ export const API = '/agent/api';
 export const PANEL_HEADERS = { 'X-PhoneBox-Panel': '1' };
 export const I18n = window.PhoneBoxI18n;
 export const t = (key, vars) => (I18n ? I18n.t(key, vars) : key);
+/** A panel literal translated by its English text (i18n.js PANEL); English when the language has no entry. */
+export const tp = (text) => (I18n && I18n.tp ? I18n.tp(text) : text);
+/** tp() with {name} placeholders filled in after the lookup, so the English text with its placeholders is the key. */
+export const tpv = (text, vars) => Object.entries(vars).reduce((s, [k, v]) => s.split(`{${k}}`).join(String(v)), tp(text));
+/** A quota label or note the agent sends in English ("5-hour session", "Weekly · Opus", "Credits: 1,250"), in the panel
+ *  language where it has the words; a model or group name in it stays as it is. */
+export function quotaText(s) {
+  if (!s || typeof s !== 'string') return s;
+  const exact = tp(s);
+  if (exact !== s) return exact;
+  let m;
+  if ((m = /^(.*?) · (.*)$/.exec(s))) return `${quotaText(m[1])} · ${m[2]}`;
+  if ((m = /^(.*?) \((.*)\)$/.exec(s))) return `${quotaText(m[1])} (${m[2]})`;
+  if ((m = /^(\d+(?:\.\d+)?)-hour$/.exec(s))) return tpv('{n}-hour', { n: m[1] });
+  if ((m = /^(\d+)-day$/.exec(s))) return tpv('{n}-day', { n: m[1] });
+  if ((m = /^Credits: (.*)$/.exec(s))) return tpv('Credits: {n}', { n: m[1] === 'unlimited' ? tp('unlimited') : m[1] });
+  return s;
+}
 export let LOCALE = I18n ? I18n.getLocale() : 'en-GB';
 export const COLS = 12;
 export const ROWS = 6;
@@ -199,6 +217,9 @@ export function h(tag, cls, ...kids) {
  *  (in Turkish "Notifications" becomes "NOTİFİCATİONS"). Titles the user typed are left as they are. */
 export function en(text) {
   const e = document.createElement('span');
+  // a title the panel language has a translation for is that language's text, not English
+  const local = tp(text);
+  if (local !== text) { e.textContent = local; return e; }
   e.lang = 'en';
   e.textContent = text;
   return e;
@@ -517,7 +538,7 @@ export function gpuMem(g) {
 }
 const memText = (m) => `${r1(m.used)} / ${Math.round(m.total)} GB`;
 /** Board power: watts when a sensor gives them, otherwise the share of the power limit Windows reports. */
-export const gpuPower = (g) => (g?.power != null ? `${Math.round(g.power)} W` : g?.powerPct != null ? `${Math.round(g.powerPct)}% power` : null);
+export const gpuPower = (g) => (g?.power != null ? `${Math.round(g.power)} W` : g?.powerPct != null ? tpv('{n}% power', { n: Math.round(g.powerPct) }) : null);
 export const netMax = () => Math.max(1, ...hist.down, ...hist.up) * 1.15;
 
 export const METRICS = {
@@ -526,52 +547,52 @@ export const METRICS = {
   gpu: { label: 'GPU', name: 'Graphics', color: '--gpu', unit: '%', max: () => 100, val: (s) => gpuOf(s)?.util,
     sub: (s) => {
       const g = gpuOf(s);
-      if (!g) return 'No GPU data';
+      if (!g) return tp('No GPU data');
       const parts = [g.temp != null ? `${Math.round(g.temp)}°C` : null, gpuPower(g)].filter(Boolean);
       if (parts.length) return parts.join(' · ');
       const mem = gpuMem(g);
-      if (mem) return `${memText(mem)} memory`; // no sensors (Apple GPU)
-      return shortGpu(g.name) || 'Active';
+      if (mem) return tpv('{mem} memory', { mem: memText(mem) }); // no sensors (Apple GPU)
+      return shortGpu(g.name) || tp('Active');
     }, title: (s) => gpuOf(s)?.name },
   ram: { label: 'RAM', name: 'Memory', color: '--ram', unit: 'GB', max: (s) => s.pc?.ramTotalGb || 1, val: (s) => s.pc?.ramUsedGb, fmt: r1,
     pct: (s) => (s.pc ? (s.pc.ramUsedGb / s.pc.ramTotalGb) * 100 : null), sub: (s) => (s.pc && s.pc.ramTotalGb ? `${r1(s.pc.ramUsedGb)} / ${Math.round(s.pc.ramTotalGb)} GB` : '') },
   vram: { label: 'VRAM', name: 'Video memory', color: '--gpu', unit: '%', max: () => 100,
     val: (s) => { const m = gpuMem(gpuOf(s)); return m ? (m.used / m.total) * 100 : null; },
-    sub: (s) => { const m = gpuMem(gpuOf(s)); return m ? memText(m) : 'No GPU data'; } },
+    sub: (s) => { const m = gpuMem(gpuOf(s)); return m ? memText(m) : tp('No GPU data'); } },
   net: { label: 'NETWORK', name: 'Network', color: '--net', rate: true, hist: 'down', max: netMax, val: (s) => s.pc?.netDownBps,
     sub: (s) => '↑ ' + rateStr(s.pc?.netUpBps) + (s.ping?.ms != null ? ` · ${Math.round(s.ping.ms)} ms` : '') },
   down: { label: 'DOWNLOAD', name: 'Download', color: '--net', rate: true, max: netMax, val: (s) => s.pc?.netDownBps },
   up: { label: 'UPLOAD', name: 'Upload', color: '--up', rate: true, max: netMax, val: (s) => s.pc?.netUpBps },
   ping: { label: 'PING', name: 'Ping', color: '#38bdf8', unit: 'ms', max: () => Math.max(50, ...hist.ping) * 1.2, val: (s) => s.ping?.ms,
-    sub: (s) => (s.ping ? `avg ${s.ping.avgMs ?? '—'} ms · loss ${s.ping.lossPct}%` : '') },
+    sub: (s) => (s.ping ? tpv('avg {avg} ms · loss {loss}%', { avg: s.ping.avgMs ?? '—', loss: s.ping.lossPct }) : '') },
   gputemp: { label: 'GPU TEMP', name: 'GPU temperature', color: '#f97316', unit: '°C', max: () => 100, hot: [75, 85], val: (s) => gpuOf(s)?.temp,
     sub: (s) => {
       const g = gpuOf(s);
-      if (!g) return 'No GPU data';
-      const detail = [g.hotSpot != null ? `Hot spot ${Math.round(g.hotSpot)}°` : null,
-        g.fan != null ? `Fan ${Math.round(g.fan)}%` : g.fanRpm != null ? `Fan ${Math.round(g.fanRpm)} rpm` : null,
+      if (!g) return tp('No GPU data');
+      const detail = [g.hotSpot != null ? tpv('Hot spot {n}°', { n: Math.round(g.hotSpot) }) : null,
+        g.fan != null ? tpv('Fan {n}%', { n: Math.round(g.fan) }) : g.fanRpm != null ? tpv('Fan {n} rpm', { n: Math.round(g.fanRpm) }) : null,
         g.clock != null ? `${Math.round(g.clock)} MHz` : null].filter(Boolean);
-      return detail.length ? detail.join(' · ') : (g.temp != null ? 'Temperature' : 'No GPU data');
+      return detail.length ? detail.join(' · ') : (g.temp != null ? tp('Temperature') : tp('No GPU data'));
     } },
   hotspot: { label: 'HOT SPOT', name: 'GPU hot spot', color: '#ef4444', unit: '°C', max: () => 110, hot: [90, 100], val: (s) => gpuOf(s)?.hotSpot,
     sub: (s) => {
       const g = gpuOf(s);
-      if (g?.hotSpot == null) return 'needs LibreHardwareMonitor';
-      return [g.temp != null ? `Edge ${Math.round(g.temp)}°` : null, g.memTemp != null ? `Memory ${Math.round(g.memTemp)}°` : null].filter(Boolean).join(' · ');
+      if (g?.hotSpot == null) return tp('needs LibreHardwareMonitor');
+      return [g.temp != null ? tpv('Edge {n}°', { n: Math.round(g.temp) }) : null, g.memTemp != null ? tpv('Memory {n}°', { n: Math.round(g.memTemp) }) : null].filter(Boolean).join(' · ');
     } },
   gpupower: { label: 'GPU POWER', name: 'GPU power', color: '#facc15', unit: (s) => (gpuOf(s)?.power != null ? 'W' : '%'),
     max: (s) => { const g = gpuOf(s); return g?.power != null ? Math.max(g.powerLimit || 0, ...hist.gpupower, 50) : 100; },
     val: (s) => { const g = gpuOf(s); return g?.power ?? g?.powerPct; },
     sub: (s) => {
       const g = gpuOf(s);
-      if (!g || (g.power == null && g.powerPct == null)) return 'No power data';
-      if (g.power != null && g.powerLimit) return `of ${Math.round(g.powerLimit)} W limit`;
-      return g.power != null ? shortGpu(g.name) : 'of the power limit';
+      if (!g || (g.power == null && g.powerPct == null)) return tp('No power data');
+      if (g.power != null && g.powerLimit) return tpv('of {n} W limit', { n: Math.round(g.powerLimit) });
+      return g.power != null ? shortGpu(g.name) : tp('of the power limit');
     } },
   gpuclock: { label: 'GPU CLOCK', name: 'GPU clock', color: '#a78bfa', unit: 'MHz', max: () => Math.max(1000, ...hist.gpuclock) * 1.1, val: (s) => gpuOf(s)?.clock,
-    sub: (s) => { const g = gpuOf(s); return g?.memClock != null ? `Memory ${Math.round(g.memClock)} MHz` : g?.clock == null ? 'No clock data' : ''; } },
+    sub: (s) => { const g = gpuOf(s); return g?.memClock != null ? tpv('Memory {n} MHz', { n: Math.round(g.memClock) }) : g?.clock == null ? tp('No clock data') : ''; } },
   cputemp: { label: 'CPU TEMP', name: 'CPU temperature', color: '#fb7185', unit: '°C', max: () => 100, hot: [75, 85], val: (s) => s.pc?.cpuTemp,
-    sub: (s) => (s.pc?.cpuTemp == null ? 'needs LibreHardwareMonitor' : shortCpu(s.pc?.cpuName)) },
+    sub: (s) => (s.pc?.cpuTemp == null ? tp('needs LibreHardwareMonitor') : shortCpu(s.pc?.cpuName)) },
 };
 
 export function metricText(m, s) {
@@ -1128,7 +1149,7 @@ export function pushView(item) {
 
 export function fmtValue(x) {
   if (typeof x === 'number') return Math.abs(x) >= 100 ? String(Math.round(x)) : String(Math.round(x * 10) / 10);
-  if (typeof x === 'boolean') return x ? 'On' : 'Off';
+  if (typeof x === 'boolean') return x ? tp('On') : tp('Off');
   return x == null ? '—' : String(x);
 }
 export const LEVEL_COLOR = { ok: '#22c55e', success: '#22c55e', warn: '#f59e0b', warning: '#f59e0b', error: '#ef4444', fail: '#ef4444', failure: '#ef4444', info: '#60a5fa' };
