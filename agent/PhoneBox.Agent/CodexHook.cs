@@ -14,7 +14,8 @@ public static class CodexHook
 
     public static Task<object?> HandleAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
         SessionMonitor sessions, CancellationToken aborted) =>
-        ClaudeHook.HandlePermissionAsync(input, cfg, approvals, sessions, aborted, "Codex", "codex:", allowQuestions: false);
+        // SessionMonitor names Codex sessions by rollout file name rather than thread id, so the project comes from cwd.
+        ClaudeHook.HandlePermissionAsync(input, cfg, approvals, sessions, aborted, "Codex", sessionPrefix: null, allowQuestions: false);
 
     public static bool Installed() => ClaudeHook.Installed(HooksPath, Endpoint);
 

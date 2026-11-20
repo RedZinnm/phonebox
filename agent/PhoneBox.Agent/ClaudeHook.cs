@@ -21,7 +21,7 @@ public static class ClaudeHook
 
     /// <summary>Shared PermissionRequest protocol used by Claude Code, Codex and compatible agents.</summary>
     internal static async Task<object?> HandlePermissionAsync(JsonElement input, ConfigStore cfg, ApprovalStore approvals,
-        SessionMonitor sessions, CancellationToken aborted, string source, string sessionPrefix, bool allowQuestions)
+        SessionMonitor sessions, CancellationToken aborted, string source, string? sessionPrefix, bool allowQuestions)
     {
         if (input.ValueKind != JsonValueKind.Object) return null;
         var c = cfg.Get().Claude;
@@ -32,7 +32,7 @@ public static class ClaudeHook
         var ti = input.TryGetProperty("tool_input", out var t) && t.ValueKind == JsonValueKind.Object ? t : default;
         var cwd = (Str(input, "cwd") ?? "").Trim();
         var sessionId = Str(input, "session_id") ?? "";
-        var session = sessions.Snapshot().FirstOrDefault(s => s.Id == sessionPrefix + sessionId);
+        var session = sessionPrefix is null ? null : sessions.Snapshot().FirstOrDefault(s => s.Id == sessionPrefix + sessionId);
         var project = session?.Name ?? ProjectName(cwd);
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         // AskUserQuestion is a question, not a permission: Allow would only open the same question in the terminal.
@@ -133,9 +133,21 @@ public static class ClaudeHook
     private static string HookCommand(int port, string endpoint) =>
         $"{(OperatingSystem.IsWindows() ? "curl.exe" : "curl")} -s --max-time 3600 -X POST http://127.0.0.1:{port}{endpoint} -H \"Content-Type: application/json\" --data-binary \"@-\"";
 
-    private static bool IsOurs(JsonNode? hook, string endpoint) =>
-        hook is JsonObject obj && obj["command"] is JsonValue v && v.TryGetValue<string>(out var cmd)
-        && cmd.Contains(endpoint, StringComparison.Ordinal);
+    private static bool IsOurs(JsonNode? hook, string endpoint)
+    {
+        if (hook is not JsonObject obj || obj["command"] is not JsonValue v || !v.TryGetValue<string>(out var cmd))
+            return false;
+        const string hostPrefix = "127.0.0.1:";
+        for (var pos = 0; (pos = cmd.IndexOf(hostPrefix, pos, StringComparison.Ordinal)) >= 0; pos += hostPrefix.Length)
+        {
+            var i = pos + hostPrefix.Length;
+            var digitsStart = i;
+            while (i < cmd.Length && char.IsAsciiDigit(cmd[i])) i++;
+            if (i > digitsStart && cmd.AsSpan(i).StartsWith(endpoint.AsSpan(), StringComparison.Ordinal))
+                return true;
+        }
+        return false;
+    }
 
     public static bool Installed() => Installed(SettingsPath);
 

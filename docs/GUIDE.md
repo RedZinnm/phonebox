@@ -208,7 +208,9 @@ When Codex asks for permission (run a command, edit a file, use an MCP tool…),
 operation with **Allow** and **Deny**. Turn it on in **Settings › General › AI coding agent permission prompts** and
 install the Codex hook. PhoneBox adds a `PermissionRequest` command hook to `~/.codex/hooks.json`, preserving other
 hooks and keeping a backup next to the file. Codex requires new or changed hooks to be reviewed once: start a new
-Codex session and trust the PhoneBox hook from `/hooks` (CLI) or **Settings › Hooks** (desktop app).
+Codex session and trust the PhoneBox hook from `/hooks` (CLI) or **Settings › Hooks** (desktop app). Requires a Codex
+release with `PermissionRequest` command hooks (tested with Codex 0.170.0; on older builds that gate hooks behind a
+feature flag, enable `codex_hooks = true` under `[features]` in `~/.codex/config.toml`).
 
 When Claude Code asks for permission (run a command, edit a file, use an MCP tool…), the phone shows the request —
 project, tool and the command or file — with **Allow** and **Deny**. Turn it on in **Settings › General › Claude Code

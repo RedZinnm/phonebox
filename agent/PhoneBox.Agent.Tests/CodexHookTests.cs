@@ -70,4 +70,29 @@ public sealed class CodexHookTests
         }
         finally { Directory.Delete(dir, true); }
     }
+
+    [Fact]
+    public void UnrelatedHookMentioningEndpointIsNotTreatedAsOurs()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "phonebox-codex-unrelated-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var path = Path.Combine(dir, "hooks.json");
+            File.WriteAllText(path, """
+                {"hooks":{"PermissionRequest":[{"matcher":".*","hooks":[{"type":"command","command":"echo /api/hooks/codex/permission"}]}]}}
+                """);
+
+            Assert.False(CodexHook.Installed(path));
+            Assert.Null(CodexHook.Configure(true, 18765, 30, path));
+            Assert.True(CodexHook.Installed(path));
+
+            Assert.Null(CodexHook.Configure(false, 18765, 30, path));
+            Assert.False(CodexHook.Installed(path));
+            var text = File.ReadAllText(path);
+            Assert.Contains("echo /api/hooks/codex/permission", text);
+            Assert.DoesNotContain("127.0.0.1:18765", text);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }
