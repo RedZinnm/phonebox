@@ -1,6 +1,8 @@
 // Localisation gaps the first i18n pass left behind: literals the dictionary already translates, and one spot
 // that compared a localized label against the English word. Against the web demo, in German.
 const { test, expect } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
 
 async function show(page, widgets) {
   await page.goto('/panel/');
@@ -128,6 +130,79 @@ test('the Greek dictionary and widget catalog are complete', async ({ page }) =>
   expect(out.category).toMatch(/[\u0370-\u03ff]/);
 });
 
+test('the Brazilian Portuguese dictionary and widget catalog are complete', async ({ page }) => {
+  await page.goto('/panel/');
+  const out = await page.evaluate(async () => {
+    const I18n = window.PhoneBoxI18n;
+    const S = I18n.STRINGS;
+    const C = I18n.CATALOG;
+    const missing = Object.keys(S.en).filter((k) => !(k in S['pt-br']));
+    // every catalog entry the other complete languages translate, so the widget list has no English gaps either
+    const missingCatalog = Object.keys(C.vi).filter((k) => !(k in C['pt-br']));
+    // a placeholder lost in translation would show "{n}" or drop the number
+    const holes = Object.keys(S.en).filter((k) => k in S['pt-br'] &&
+      (S.en[k].match(/\{\w+\}/g) || []).sort().join() !== (S['pt-br'][k].match(/\{\w+\}/g) || []).sort().join());
+    I18n.setLang('pt-br');
+    return {
+      missing,
+      missingCatalog,
+      holes,
+      locale: I18n.getLocale(),
+      add: I18n.t('s.js.addWidget'),
+      name: I18n.tc('Clock'),
+      category: I18n.tc('Weather & sky'),
+    };
+  });
+  expect(out.missing).toEqual([]);
+  expect(out.missingCatalog).toEqual([]);
+  expect(out.holes).toEqual([]);
+  expect(out.locale).toBe('pt-BR');
+  expect(out.add).toBe('Adicionar um widget');
+  expect(out.name).toBe('Rel\u00f3gio');
+  expect(out.category).toBe('Clima e c\u00e9u');
+});
+
+// The widgets write some panel text as English literals wrapped in tp() / tpv() / en(); PANEL['pt-br'] must have each.
+test('every panel literal has a Brazilian Portuguese entry', async ({ page }) => {
+  const www = path.join(__dirname, '..', '..', 'android', 'app', 'src', 'main', 'assets', 'www');
+  const files = ['main.js', ...fs.readdirSync(path.join(www, 'widgets')).filter((f) => f.endsWith('.js')).map((f) => `widgets/${f}`)];
+  const LIT = String.raw`'((?:[^'\\\n]|\\.)*)'`;
+  const used = new Set();
+  for (const f of files) {
+    const src = fs.readFileSync(path.join(www, f), 'utf8');
+    for (const m of src.matchAll(new RegExp(String.raw`\b(?:tp|tpv)\(\s*` + LIT, 'g'))) used.add(m[1].replace(/\\'/g, "'"));
+    for (const m of src.matchAll(/\ben\(([^()]*)\)/g)) for (const x of m[1].matchAll(new RegExp(LIT, 'g'))) used.add(x[1]);
+  }
+  await page.goto('/panel/');
+  const have = await page.evaluate(() => Object.keys(window.PhoneBoxI18n.PANEL['pt-br']));
+  const missing = [...used].filter((s) => /[A-Za-z]{2,}/.test(s) && !have.includes(s));
+  expect(missing).toEqual([]);
+  // and a language without entries keeps the English text
+  const english = await page.evaluate(() => { const I = window.PhoneBoxI18n; I.setLang('de'); return I.tp('Waiting for GitHub data…'); });
+  expect(english).toBe('Waiting for GitHub data…');
+});
+
+test('Follow system picks Brazilian Portuguese for pt-BR and keeps pt for Portugal', async ({ browser }) => {
+  for (const [locale, expected] of [['pt-BR', 'pt-br'], ['pt-PT', 'pt'], ['pt', 'pt']]) {
+    const context = await browser.newContext({ locale });
+    const page = await context.newPage();
+    await page.goto('/panel/');
+    const got = await page.evaluate(() => window.PhoneBoxI18n.resolveLang('auto'));
+    expect(got, locale).toBe(expected);
+    await context.close();
+  }
+});
+
+test('the word clock speaks Brazilian Portuguese', async ({ page }) => {
+  await page.goto('/panel/');
+  const out = await page.evaluate(async () => {
+    const { timeInWordsPt } = await import('/panel/widgets/time.js');
+    const say = (hh, mm) => { const r = timeInWordsPt(new Date(2026, 0, 1, hh, mm)); return `${r.lead} ${r.main.join(' ')}`; };
+    return [say(10, 15), say(10, 40), say(12, 30), say(1, 0), say(23, 40)];
+  });
+  expect(out).toEqual(['s\u00e3o dez e quinze', 's\u00e3o vinte para as onze', '\u00e9 meio-dia e meia', '\u00e9 uma em ponto', 's\u00e3o vinte para a meia-noite']);
+});
+
 test('the widget catalog translates by its English text', async ({ page }) => {
   await page.goto('/panel/');
   const out = await page.evaluate(() => {
@@ -178,7 +253,7 @@ test('i18n.js defines every key once per language', () => {
     if (seen.has(key)) dupes.push(`${block} ${k[1]} (lines ${seen.get(key)} and ${i + 1})`);
     else seen.set(key, i + 1);
   });
-  expect(spaces.size).toBeGreaterThanOrEqual(14); // the parser still finds the language blocks (13 languages + catalog)
+  expect(spaces.size).toBeGreaterThanOrEqual(15); // the parser still finds the language blocks (14 languages + catalog)
   expect(dupes).toEqual([]);
 });
 

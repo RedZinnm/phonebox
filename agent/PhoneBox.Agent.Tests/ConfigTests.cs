@@ -539,6 +539,7 @@ public class ConfigConcurrencyTests
     [InlineData("\"TR\"", "tr")]       // any case
     [InlineData("\" de \"", "de")]     // stray spaces
     [InlineData("\"vi\"", "vi")]       // added after the list was first written (#177)
+    [InlineData("\"pt-BR\"", "pt-br")] // a regional variant, lower-cased like the others
     [InlineData("\"xx\"", "auto")]     // a language PhoneBox does not have
     [InlineData("null", "auto")]
     [InlineData("\"\"", "auto")]
@@ -567,7 +568,7 @@ public class ConfigConcurrencyTests
         using var s = AppPaths.Resource("www/i18n.js");
         Assert.NotNull(s);
         var js = new StreamReader(s!).ReadToEnd();
-        var codes = System.Text.RegularExpressions.Regex.Matches(js, @"\{\s*code:\s*'([a-z]{2,3})'").Select(m => m.Groups[1].Value).ToHashSet();
+        var codes = System.Text.RegularExpressions.Regex.Matches(js, @"\{\s*code:\s*'([a-z]{2,3}(?:-[a-z]{2})?)'").Select(m => m.Groups[1].Value).ToHashSet();
         Assert.Contains("en", codes);
         Assert.Equal(codes.Order(), DisplayConfig.Languages.Where(l => l != "auto").Order());
     }

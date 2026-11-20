@@ -469,7 +469,7 @@ nav a.on::before { color: var(--accent); }
   <span class="pill" id="phone"><i></i><span data-i18n="s.phoneStatus">Phone…</span></span>
   <button class="btn sm upd-top" id="updTop" hidden></button>
   <div class="spacer"></div>
-  <select id="langSel" data-i18n-title="lang.label" title="Language" aria-label="Language" style="padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-size:12.5px;max-width:160px"></select>
+  <select id="langSel" data-i18n-title="lang.label" title="Language" data-i18n-aria="lang.label" aria-label="Language" style="padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-size:12.5px;max-width:160px"></select>
   <span class="dirty" role="status" data-i18n-title="s.unsavedChanges" title="Unsaved changes"><i class="dirty-dot"></i><span data-i18n="s.unsavedChanges">Unsaved changes</span></span>
   <button class="btn primary" id="restartBtn" hidden title="Wi-Fi settings change after a restart" data-i18n="s.restartApply" data-i18n-title="s.restartApplyTitle">Restart to apply</button>
   <button class="btn" id="openPhone" data-i18n="s.openOnPhone">Open on phone</button>
@@ -740,7 +740,7 @@ nav a.on::before { color: var(--accent); }
           <span data-i18n-html="s.battery.leadTail">where it comes from: a <b>smart plug in Home Assistant</b> (the phone on its own charger), or two <b>shortcuts</b>, for example
           <code>uhubctl</code> for a USB hub with switchable ports. Without USB power the panel keeps running over Wi-Fi.</span></p>
         <div class="row" style="margin-bottom:12px"><label class="switch"><input type="checkbox" data-bind="charge.enabled"><span></span></label> <span data-i18n="s.battery.keepBetween">Keep the battery between</span>
-          <input type="number" min="5" max="95" data-bind="charge.min" data-type="int" style="width:70px"> % and
+          <input type="number" min="5" max="95" data-bind="charge.min" data-type="int" style="width:70px"> <span data-i18n="s.battery.and">% and</span>
           <input type="number" min="10" max="100" data-bind="charge.max" data-type="int" style="width:70px"> %</div>
         <div class="grid2">
           <div class="field"><label data-i18n="s.battery.method">Switch the power with</label><select data-bind="charge.method"><option value="ha" data-i18n="s.battery.methodHa">a Home Assistant switch (smart plug)</option><option value="shortcuts" data-i18n="s.battery.methodShortcuts">two shortcuts (power on / power off)</option></select></div>
@@ -1309,7 +1309,7 @@ function renderPageEditor() {
   $('peHead').replaceChildren(
     h('div', { class: 'card' },
       h('div', { class: 'row', style: { gap: '10px' } },
-        h('input', { type: 'text', class: 'icon-input', value: p.icon || '', maxlength: 8, title: 'Icon', 'aria-label': 'Icon', oninput: (e) => { p.icon = e.target.value; changed(); renderTabsOnly(); } }),
+        h('input', { type: 'text', class: 'icon-input', value: p.icon || '', maxlength: 8, title: t('s.ha.iconPh'), 'aria-label': t('s.ha.iconPh'), oninput: (e) => { p.icon = e.target.value; changed(); renderTabsOnly(); } }),
         h('input', { type: 'text', value: p.title || '', placeholder: t('s.js.pageName'), 'aria-label': t('s.js.pageName'), style: { flex: '1', fontSize: '16px', fontWeight: '600' }, oninput: (e) => { p.title = e.target.value; changed(); renderTabsOnly(); } }),
         h('label', { class: 'check', title: t('s.js.showOnPhone') }, h('label', { class: 'switch' },
           h('input', { type: 'checkbox', checked: p.enabled !== false, onchange: (e) => {
@@ -2468,7 +2468,7 @@ async function loadPushed() {
     const items = Object.entries(r.items || {}).sort((a, b) => b[1].at - a[1].at);
     $('whItems').replaceChildren(...(items.length ? items.map(([k, v]) => h('tr', {},
       h('td', {}, h('code', {}, k)), h('td', { class: 'val' }, JSON.stringify(v.data)), h('td', { class: 'hint' }, new Date(v.at).toLocaleString()),
-      h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, 'Delete'))))
+      h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await fetch('/api/push/' + encodeURIComponent(k), { method: 'DELETE' }); loadPushed(); } }, t('s.r.del')))))
       : [h('tr', {}, h('td', { colspan: 4, class: 'hint' }, t('s.wh.nothingPushed')))]));
   } catch (_) {}
 }
@@ -2547,8 +2547,8 @@ function renderEditor() {
       h('div', { class: 'row', style: { gap: '6px' } },
         h('button', { class: 'btn sm', onclick: () => moveKey(-1), disabled: selKey === 0 }, t('s.js.earlier')),
         h('button', { class: 'btn sm', onclick: () => moveKey(1), disabled: selKey === cfg.shortcuts.length - 1 }, t('s.js.later')),
-        h('button', { class: 'btn sm', onclick: testKey }, icon('play', 'm'), 'Test'),
-        h('button', { class: 'btn sm danger', onclick: delKey }, 'Delete'))),
+        h('button', { class: 'btn sm', onclick: testKey }, icon('play', 'm'), t('s.test')),
+        h('button', { class: 'btn sm danger', onclick: delKey }, t('s.r.del')))),
     h('div', { class: 'grid2' },
       h('div', {},
         text('label', t('s.k.label'), t('s.k.labelHint')),
@@ -2987,15 +2987,15 @@ function appearanceEditor(owner, parents, label, widget = false) {
       return PhoneBoxAppearance.resolve(...parents(), inherited).font;
     })();
     fields.push(h('div', { class: 'field' }, h('label', {}, t('s.ap.font')),
-      h('select', { 'aria-label': 'Font', onchange: e => { set('font', e.target.value || null); render(); } },
+      h('select', { 'aria-label': t('s.ap.font'), onchange: e => { set('font', e.target.value || null); render(); } },
         h('option', { value: '', selected: owner.appearance?.font == null }, !inheritedFont || inheritedFont === 'default' ? t('s.appearance.originalWidgetFont') : t('s.ap.inheritFont', { font: tl(fontLabels[inheritedFont]) })),
         ...Object.entries(fontLabels).map(([value, text]) => h('option', { value, selected: owner.appearance?.font === value }, tl(text))))));
     const numeric = (key, title, max, fallback, min = 0, step = 1, unit = ' px') => {
       const value = current[key];
-      const output = h('output', { style: { minWidth: '80px', fontVariantNumeric: 'tabular-nums' } }, value == null ? 'Automatic' : value + unit);
+      const output = h('output', { style: { minWidth: '80px', fontVariantNumeric: 'tabular-nums' } }, value == null ? tl('Automatic') : value + unit);
       const input = h('input', { type: 'range', min, max, step, value: value ?? fallback, 'aria-label': title, style: { flex: '1', minWidth: '60px' } });
       input.oninput = () => { set(key, Number(input.value)); output.textContent = input.value + unit; };
-      const reset = h('button', { type: 'button', class: 'btn sm', 'aria-label': 'Inherit ' + title.toLowerCase(), onclick: () => { set(key, null); render(); } }, t('s.ap.inherit'));
+      const reset = h('button', { type: 'button', class: 'btn sm', 'aria-label': t('s.ap.inherit') + ' ' + title.toLowerCase(), onclick: () => { set(key, null); render(); } }, t('s.ap.inherit'));
       fields.push(h('div', { class: 'field' }, h('label', {}, title), h('div', { class: 'row', style: { gap: '10px' } }, input, output, reset)));
     };
     numeric('fontScale', t('s.ap.fontSize'), 200, 100, 50, 5, '%');
@@ -3010,7 +3010,7 @@ function appearanceEditor(owner, parents, label, widget = false) {
       fields.push(h('div', { class: 'field' }, h('label', {}, title),
         h('select', { 'aria-label': title, onchange: e => set(key, e.target.value === '' ? null : e.target.value === 'true') },
           h('option', { value: '', selected: value == null }, fallback == null ? t('s.appearance.originalWidgetDefault') : 'Inherit (' + (fallback ? 'on' : 'off') + ')'),
-          h('option', { value: 'true', selected: value === true }, 'On'), h('option', { value: 'false', selected: value === false }, 'Off'))));
+          h('option', { value: 'true', selected: value === true }, tl('On')), h('option', { value: 'false', selected: value === false }, tl('Off')))));
     }
     root.replaceChildren(h('summary', {}, label), h('p', { class: 'hint' }, widget
       ? 'Overrides the page and global appearance. Inherit restores the preset or parent value.'
@@ -3163,14 +3163,15 @@ async function searchCity() {
   box.hidden = false;
   box.replaceChildren(h('button', { disabled: true }, t('s.searching')));
   try {
-    const lang = window.PhoneBoxI18n ? window.PhoneBoxI18n.getLang() : 'en';
+    // Open-Meteo takes a two-letter language code: pt-br asks for "pt"
+    const lang = (window.PhoneBoxI18n ? window.PhoneBoxI18n.getLang() : 'en').split('-')[0];
     const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=${encodeURIComponent(lang)}&format=json`);
     const j = await r.json();
     const res = j.results || [];
     box.replaceChildren(...(res.length ? res.map((c) => h('button', { onclick: () => {
       // a new place keeps the temperature unit
       cfg.weather = { ...cfg.weather, city: c.name, lat: +c.latitude.toFixed(3), lon: +c.longitude.toFixed(3) };
-      bindForm(); changed(); box.hidden = true; toast(`Location: ${c.name}`);
+      bindForm(); changed(); box.hidden = true; toast(t('s.weather.locationSet', { name: c.name }));
     } }, c.name, ' ', h('small', {}, [c.admin1, c.country].filter(Boolean).join(', ')))) : [h('button', { disabled: true }, t('s.noResults'))]));
   } catch (_) { box.replaceChildren(h('button', { disabled: true }, t('s.searchFailed'))); }
 }

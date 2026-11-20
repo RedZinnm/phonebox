@@ -1,4 +1,4 @@
-import { $, LOCALE, buzz, fmtTime, h, en, haptic, icon, labelled, pad, r1, rich, store, t, tick, toast } from '../main.js';
+import { $, LOCALE, buzz, fmtTime, h, en, haptic, icon, labelled, pad, r1, rich, store, t, tick, toast, tp } from '../main.js';
 import { W } from '../registry.js';
 import { dialEl, lines } from './helpers.js';
 const tr = (...args) => t(...args); // some widgets below name a local `t` (a timer element), which hides the translator
@@ -119,7 +119,7 @@ W.timer = {
       if (st.endsAt && remaining() <= 0) {
         st = { endsAt: null, left: 0, total: 0 }; save(); renderBtns();
         buzz('0,300,150,300,150,600');
-        toast('Time is up', 'ok', '⏳ ' + (o.label || 'Timer'), 6);
+        toast(tp('Time is up'), 'ok', '⏳ ' + (o.label || tp('Timer')), 6);
       }
       const left = remaining();
       dial.set(st.total ? 100 * (left / st.total) : 0, st.total ? fmtTime(left + 999) : '—');
@@ -136,7 +136,7 @@ W.counter = {
     const key = `ct:${page.id}/${w.id}`;
     let st = store.get(key, null) || { n: 0, day: new Date().toDateString() };
     const step = Number(o.step) || 1;
-    const num = h('div', 'ct-n'), minus = h('button', 'pb', '−'), plus = h('button', 'pb main', '+'), reset = h('button', 'mini-btn', 'Reset');
+    const num = h('div', 'ct-n'), minus = h('button', 'pb', '−'), plus = h('button', 'pb main', '+'), reset = h('button', 'mini-btn', tp('Reset'));
     box.style.setProperty('--q', o.color || '#a78bfa');
     box.append(h('div', 'w-title', o.label || en('Counter'), reset), num, h('div', 'pomo-btns', minus, plus));
     // "Start from zero every day" also when the panel stays open over midnight (it is never rebuilt then)
@@ -279,6 +279,30 @@ export function timeInWords(d) {
   else main = [minutes[60 - m], 'to', hourName(hr + 1)];
   return { lead: exact ? "it's" : over ? "it's just after" : "it's almost", main };
 }
+
+// Brazilian Portuguese: "dez e quinze", "vinte para as onze", "meio-dia e meia".
+const PT_HOURS = ['meia-noite', 'uma', 'duas', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez', 'onze', 'meio-dia'];
+const PT_MINUTES = { 5: 'cinco', 10: 'dez', 15: 'quinze', 20: 'vinte', 25: 'vinte e cinco', 30: 'meia' };
+export function timeInWordsPt(d) {
+  const total = d.getHours() * 60 + d.getMinutes();
+  const r = Math.round(total / 5) * 5;
+  const exact = r === total, over = total > r;
+  const m = r % 60, hr = Math.floor(r / 60) % 24;
+  // 0 and 12 have their own names; every other hour is said on a 12-hour dial
+  const hourName = (x) => (x % 24 === 0 ? PT_HOURS[0] : x % 24 === 12 ? PT_HOURS[12] : PT_HOURS[x % 12]);
+  // the article that goes before an hour: "as onze", "a uma", "o meio-dia", "a meia-noite"
+  const article = (x) => (x % 24 === 12 ? 'o' : x % 12 === 1 || x % 24 === 0 ? 'a' : 'as');
+  const singular = (x) => x % 24 === 0 || x % 24 === 12 || x % 12 === 1;
+  let main, verbHour;
+  if (m === 0) { main = hr % 12 === 0 ? [hourName(hr)] : [hourName(hr), 'em ponto']; verbHour = hr; }
+  else if (m <= 30) { main = [hourName(hr), 'e', PT_MINUTES[m]]; verbHour = hr; }
+  else { main = [PT_MINUTES[60 - m], `para ${article(hr + 1)}`, hourName(hr + 1)]; verbHour = null; }
+  let lead;
+  if (exact) lead = verbHour === null ? 'são' : singular(verbHour) ? 'é' : 'são';
+  else if (over) lead = verbHour === null ? 'pouco depois de' : `pouco depois d${article(verbHour)}`;
+  else lead = 'quase';
+  return { lead, main };
+}
 W.wordclock = {
   bare: true, needs: ['tick'],
   create(box) {
@@ -293,7 +317,7 @@ W.wordclock = {
           shownDay = day;
           date.textContent = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
         }
-        const t = timeInWords(now);
+        const t = LOCALE === 'pt-BR' ? timeInWordsPt(now) : timeInWords(now);
         const k = t.lead + t.main.join(' ');
         if (k === shown) return;
         shown = k;
